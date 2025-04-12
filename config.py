@@ -1,0 +1,2 @@
+supabase_url = "https://huszzhgueyzadwaokskr.supabase.co"
+supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh1c3p6aGd1ZXl6YWR3YW9rc2tyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ0NjE0MDUsImV4cCI6MjA2MDAzNzQwNX0.Wwjs5yeotu0Mfe2jlF5ajT0yGnRMOy-3EX4zhLS7fzM"
