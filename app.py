@@ -62,7 +62,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 # タイトル
-st.markdown("<div class='app-title'>📘 RegLess：未来にログする人生設計アプリ</div>", unsafe_allow_html=True)
+st.markdown("<div class='app-title'>📘 RegLess：あなたの人生を彩るバケットリスト</div>", unsafe_allow_html=True)
 
 # -----------------------------
 # 接続設定
