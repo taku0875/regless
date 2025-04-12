@@ -8,42 +8,59 @@ import plotly.express as px
 # -----------------------------
 # 페ージ設定 & カラーテーマ選択
 # -----------------------------
-st.set_page_config(page_title="RegLess", layout="wide")
 
+# カラーテーマ選択
 theme = st.sidebar.selectbox("🎨 カラーテーマ", ["ライト", "ダーク", "ブルー"])
+
+# テーマに応じたスタイルを定義
 if theme == "ダーク":
-    bg_color = "#1e1e1e"; text_color = "white"; accent = "#0ff"
+    bg_color = "#1e1e1e"
+    text_color = "white"
+    accent = "#0ff"
 elif theme == "ブルー":
-    bg_color = "#e6f7ff"; text_color = "#003366"; accent = "#3399ff"
+    bg_color = "#e6f7ff"
+    text_color = "#003366"
+    accent = "#3399ff"
 else:
-    bg_color = "#f9f9f9"; text_color = "#333"; accent = "#4facfe"
+    bg_color = "#f9f9f9"
+    text_color = "#333"
+    accent = "#4facfe"
 
-# カスタムスタイル
-st.markdown(f"""
-<style>
-body {{
-    background-color: {bg_color};
-    color: {text_color};
-    font-family: 'Helvetica Neue', sans-serif;
-}}
-.stButton > button {{
-    background: {accent};
-    color: white;
-    font-weight: bold;
-    padding: 0.5rem 1.2rem;
-    border: none;
-    border-radius: 8px;
-}}
-.app-title {{
-    text-align: center;
-    font-size: 2rem;
-    margin-top: 1.5rem;
-    margin-bottom: 1rem;
-    color: {text_color};
-}}
-</style>
-""", unsafe_allow_html=True)
-
+# CSSを埋め込んでテーマカラーを適用
+st.markdown(
+    f"""
+    <style>
+        body {{
+            background-color: {bg_color};
+            color: {text_color};
+        }}
+        .stApp {{
+            background-color: {bg_color};
+            color: {text_color};
+        }}
+        h1, h2, h3, h4, h5, h6, p, span {{
+            color: {text_color};
+        }}
+        .css-1emrehy edgvbvh3 {{
+            color: {text_color} !important;
+        }}
+        .stButton > button {{
+            background-color: {accent};
+            color: white;
+            border-radius: 8px;
+            border: none;
+        }}
+        .stSelectbox {{
+            color: {text_color};
+        }}
+        .stTextInput > div > div > input {{
+            background-color: #fff;
+            color: {text_color};
+        }}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 # タイトル
 st.markdown("<div class='app-title'>📘 RegLess：未来にログする人生設計アプリ</div>", unsafe_allow_html=True)
 
