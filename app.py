@@ -5,60 +5,51 @@ from datetime import datetime, date
 import plotly.express as px
 from openai import OpenAI
 
-# ====== 接続情報 ======
+# ----------------------
+# ✅ Secretsから設定取得
+# ----------------------
 supabase = create_client(
     st.secrets["supabase_url"],
     st.secrets["supabase_key"]
 )
 client = OpenAI(api_key=st.secrets["openai_api_key"])
 
-# ====== ページ基本設定 ======
+# ----------------------
+# ✅ ページ設定とテーマ選択
+# ----------------------
 st.set_page_config(page_title="RegLess", layout="wide")
+theme = st.sidebar.selectbox("🎨 カラーテーマ", ["ライト", "ダーク", "ブルー"])
 
-# ====== スタイル（CSS） ======
-st.markdown("""
+# カラーテーマ適用
+if theme == "ダーク":
+    bg_color = "#1e1e1e"; text_color = "white"; accent = "#0ff"
+elif theme == "ブルー":
+    bg_color = "#e6f7ff"; text_color = "#003366"; accent = "#3399ff"
+else:
+    bg_color = "#f9f9f9"; text_color = "#333"; accent = "#4facfe"
+
+# カスタムCSS
+st.markdown(f"""
 <style>
-body {
-    background-color: #f4f7f9;
+body {{
+    background-color: {bg_color};
+    color: {text_color};
     font-family: 'Helvetica Neue', sans-serif;
-}
-section {
-    background-color: white;
-    padding: 2rem;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    margin-bottom: 2rem;
-}
-.stButton > button {
-    background: linear-gradient(to right, #4facfe, #00f2fe);
+}}
+.stButton > button {{
+    background: {accent};
     color: white;
-    font-weight: bold;
-    padding: 0.5rem 1.2rem;
     border: none;
+    padding: 0.5rem 1.2rem;
     border-radius: 8px;
-}
+    font-weight: bold;
+}}
 </style>
 """, unsafe_allow_html=True)
 
-# ====== タイトル ======
-st.markdown("<h1 style='color:#2c3e50'>🪄 RegLess：未来にやりたいことをログする</h1>", unsafe_allow_html=True)
-
-# ====== 残り寿命計算 ======
-with st.container():
-    st.markdown("## 🧬 あなたの基本情報")
-    birthdate = st.date_input("生年月日", value=date(1990, 1, 1))
-    expected_lifespan = st.slider("想定寿命（年）", 50, 120, 85)
-
-    today = date.today()
-    age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
-    death_date = date(birthdate.year + expected_lifespan, birthdate.month, birthdate.day)
-    remaining_days = (death_date - today).days
-    remaining_years = remaining_days // 365
-
-    st.markdown(f"🌱 **現在年齢：{age}歳**")
-    st.markdown(f"⏳ **残り寿命：約 {remaining_years}年（{remaining_days}日）**")
-
-# ====== ユーザー登録（セッション制御） ======
+# ----------------------
+# ✅ セッションでuser_idを管理
+# ----------------------
 if "user_id" not in st.session_state:
     new_user = supabase.table("users").insert({
         "email": f"guest_{datetime.now().timestamp()}@example.com",
@@ -66,15 +57,33 @@ if "user_id" not in st.session_state:
     }).execute()
     st.session_state["user_id"] = new_user.data[0]["id"]
 
-# ====== やりたいこと登録フォーム ======
-with st.container():
-    st.markdown("## ✏️ やりたいこと登録")
-    goal = st.text_input("🎯 やりたいこと", placeholder="例：週3回ジムに行く")
-    tag = st.text_input("🏷 タグ", placeholder="例：健康")
-    deadline = st.date_input("📅 期限")
+user_id = st.session_state["user_id"]
 
-    if st.button("💡 OpenAIに提案をもらう"):
-        prompt = f"以下のやりたいことに対して、所要時間・費用・次のアクションを簡潔に提案してください：{goal}"
+# ----------------------
+# 🧭 タブUIで画面を整理
+# ----------------------
+tab1, tab2, tab3, tab4 = st.tabs([
+    "📝 やりたいこと登録",
+    "👤 自分の目標",
+    "🌍 みんなの目標",
+    "📊 ガントチャート"
+])
+
+# ----------------------
+# 📝 やりたいこと登録タブ
+# ----------------------
+with tab1:
+    st.markdown("## ✏️ やりたいこと登録")
+    goal = st.text_input("🎯 やりたいこと", placeholder="例：毎週3回ジムに行く")
+    tag = st.text_input("🏷 タグ", placeholder="例：健康")
+    deadline = st.date_input("📅 期限", min_value=date.today())
+    time_required = st.slider("🕒 所要時間（時間）", 0, 100, 5)
+    cost_estimate = st.slider("💰 想定費用（千円）", 0, 100, 0)
+    next_action = st.text_input("▶️ 次のアクション")
+    comments = st.text_area("💬 コメント")
+
+    if st.button("💡 OpenAIに提案してもらう"):
+        prompt = f"やりたいこと「{goal}」に対して、所要時間・費用・次アクションを提案してください"
         try:
             response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
@@ -83,58 +92,83 @@ with st.container():
                     {"role": "user", "content": prompt}
                 ]
             )
-            suggestion = response.choices[0].message.content.strip()
-            st.markdown("### ✨ OpenAIからの提案")
-            st.success(suggestion)
+            st.success(response.choices[0].message.content.strip())
         except Exception as e:
             st.error(f"OpenAIエラー: {e}")
 
     if st.button("✅ 登録する"):
         supabase.table("goals").insert({
-            "user_id": st.session_state["user_id"],
+            "user_id": user_id,
             "goal": goal,
             "tag": tag,
             "deadline": str(deadline),
-            "time_required": "",
-            "cost_estimate": "",
-            "next_action": "",
+            "time_required": str(time_required),
+            "cost_estimate": str(cost_estimate),
+            "next_action": next_action,
             "likes": 0,
-            "comments": ""
+            "comments": comments
         }).execute()
         st.success("📌 登録が完了しました！")
 
-# ====== 一覧表示 ======
-st.markdown("## 📋 みんなの目標一覧")
-tag_filter = st.text_input("🔍 タグでフィルター", "")
+# ----------------------
+# 👤 自分の目標タブ
+# ----------------------
+with tab2:
+    st.markdown("## 👤 あなたの目標一覧")
+    my_goals = supabase.table("goals").select("*").eq("user_id", user_id).order("deadline").execute().data
+    if my_goals:
+        for g in my_goals:
+            st.markdown(f"""
+---
+📌 **{g['goal']}**  
+🏷 タグ: {g['tag']}  
+📅 期限: {g['deadline']}  
+🕒 所要時間: {g['time_required']} 時間  
+💰 想定費用: {g['cost_estimate']} 千円  
+▶️ 次のアクション: {g['next_action'] or '未設定'}  
+💬 コメント: {g['comments'] or 'なし'}  
+❤️ いいね: {g['likes']}
+""")
+    else:
+        st.info("まだ登録された目標がありません。")
 
-try:
-    goals = supabase.table("goals").select("*").order("deadline", desc=False).execute().data
-    for g in goals:
+# ----------------------
+# 🌍 みんなの目標タブ
+# ----------------------
+with tab3:
+    st.markdown("## 🌍 みんなの目標検索")
+    tag_filter = st.text_input("🔍 タグでフィルター", "")
+    all_goals = supabase.table("goals").select("*").order("deadline").execute().data
+
+    for g in all_goals:
         if tag_filter and tag_filter.lower() not in (g["tag"] or "").lower():
             continue
         st.markdown(f"""
 ---
-✅ **{g['goal']}**  
+🎯 **{g['goal']}**  
 🏷 タグ: {g['tag']}  
 📅 期限: {g['deadline']}  
 ❤️ いいね: {g['likes']}  
 💬 コメント: {g['comments'] or '（コメントなし）'}
-        """)
-except Exception as e:
-    st.error(f"取得エラー: {e}")
+""")
 
-# ====== ガントチャート ======
-st.markdown("## 📊 ガントチャート（予定一覧）")
-if goals:
-    df = pd.DataFrame([{
-        "Task": g["goal"],
-        "Start": datetime.today().date(),
-        "Finish": g["deadline"],
-        "Tag": g["tag"]
-    } for g in goals if g["deadline"]])
-    if not df.empty:
-        fig = px.timeline(df, x_start="Start", x_end="Finish", y="Task", color="Tag")
-        fig.update_yaxes(autorange="reversed")
-        st.plotly_chart(fig)
+# ----------------------
+# 📊 ガントチャートタブ
+# ----------------------
+with tab4:
+    st.markdown("## 📊 ガントチャート")
+    if all_goals:
+        df = pd.DataFrame([{
+            "Task": g["goal"],
+            "Start": datetime.today().date(),
+            "Finish": g["deadline"],
+            "Tag": g["tag"]
+        } for g in all_goals if g["deadline"]])
+        if not df.empty:
+            fig = px.timeline(df, x_start="Start", x_end="Finish", y="Task", color="Tag")
+            fig.update_yaxes(autorange="reversed")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("ガントチャートに表示できる目標がありません。")
     else:
-        st.info("表示できる目標がありません。")
+        st.info("まだ目標が登録されていません。")
