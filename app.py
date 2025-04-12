@@ -17,7 +17,7 @@ elif theme == "ブルー":
 else:
     bg_color = "#f9f9f9"; text_color = "#333"; accent = "#4facfe"
 
-# カスタムスタイル（スマホ対応）
+# カスタムスタイル
 st.markdown(f"""
 <style>
 body {{
@@ -43,7 +43,7 @@ body {{
 </style>
 """, unsafe_allow_html=True)
 
-# アプリタイトル
+# タイトル
 st.markdown("<div class='app-title'>📘 RegLess：未来にログする人生設計アプリ</div>", unsafe_allow_html=True)
 
 # -----------------------------
@@ -52,9 +52,7 @@ st.markdown("<div class='app-title'>📘 RegLess：未来にログする人生�
 supabase = create_client(st.secrets["supabase_url"], st.secrets["supabase_key"])
 client = OpenAI(api_key=st.secrets["openai_api_key"])
 
-# -----------------------------
-# セッションユーザー管理
-# -----------------------------
+# ユーザーID管理
 if "user_id" not in st.session_state:
     new_user = supabase.table("users").insert({
         "email": f"guest_{datetime.now().timestamp()}@example.com",
@@ -71,7 +69,7 @@ if not st.session_state.get("welcomed", False):
 user_id = st.session_state["user_id"]
 
 # -----------------------------
-# タブ分割（ガントチャート除外）
+# タブ分割
 # -----------------------------
 tab1, tab2, tab3 = st.tabs([
     "📝 やりたいこと登録",
@@ -80,11 +78,11 @@ tab1, tab2, tab3 = st.tabs([
 ])
 
 # -----------------------------
-# 📝 やりたいこと登録
+# やりたいこと登録
 # -----------------------------
 with tab1:
     st.markdown("## ✏️ やりたいこと登録")
-    goal = st.text_input("🎯 やりたいこと", placeholder="例：毎週3回ジムに行く")
+    goal = st.text_input("🌟 やりたいこと", placeholder="例：毎週3回ジムに行く")
     tag = st.text_input("🏷 タグ", placeholder="例：健康")
     deadline = st.date_input("📅 期限", min_value=date.today())
     time_required = st.slider("🕒 所要時間（時間）", 0, 100, 5)
@@ -124,7 +122,7 @@ with tab1:
         st.balloons()
 
 # -----------------------------
-# 👤 自分の目標一覧
+# 自分の目標
 # -----------------------------
 with tab2:
     st.markdown("## 👤 あなたの目標一覧")
@@ -146,7 +144,7 @@ with tab2:
         st.info("まだ登録された目標がありません。")
 
 # -----------------------------
-# 🌍 みんなの目標検索
+# みんなの目標
 # -----------------------------
 with tab3:
     st.markdown("## 🌍 みんなの目標検索")
@@ -156,11 +154,17 @@ with tab3:
     for g in all_goals:
         if tag_filter and tag_filter.lower() not in (g["tag"] or "").lower():
             continue
+
         st.markdown(f"""
 ---
 🎯 **{g['goal']}**  
 🏷 タグ: {g['tag']}  
 📅 期限: {g['deadline']}  
-❤️ いいね: {g['likes']}  
 💬 コメント: {g['comments'] or '（コメントなし）'}
 """)
+
+        if st.button(f"❤️ いいね！({g['likes']})", key=f"like_{g['id']}"):
+            new_likes = g['likes'] + 1
+            supabase.table("goals").update({"likes": new_likes}).eq("id", g["id"]).execute()
+            st.success("👍 いいねしました！")
+            st.experimental_rerun()
