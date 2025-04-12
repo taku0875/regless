@@ -5,22 +5,12 @@ from datetime import datetime, date
 import plotly.express as px
 from openai import OpenAI
 
-# ----------------------
-# ✅ Secretsから設定取得
-# ----------------------
-supabase = create_client(
-    st.secrets["supabase_url"],
-    st.secrets["supabase_key"]
-)
-client = OpenAI(api_key=st.secrets["openai_api_key"])
-
-# ----------------------
-# ✅ ページ設定とテーマ選択
-# ----------------------
+# -------------------------
+# 🎨 カラーテーマとページ設定
+# -------------------------
 st.set_page_config(page_title="RegLess", layout="wide")
-theme = st.sidebar.selectbox("🎨 カラーテーマ", ["ライト", "ダーク", "ブルー"])
 
-# カラーテーマ適用
+theme = st.sidebar.selectbox("🎨 カラーテーマ", ["ライト", "ダーク", "ブルー"])
 if theme == "ダーク":
     bg_color = "#1e1e1e"; text_color = "white"; accent = "#0ff"
 elif theme == "ブルー":
@@ -28,7 +18,6 @@ elif theme == "ブルー":
 else:
     bg_color = "#f9f9f9"; text_color = "#333"; accent = "#4facfe"
 
-# カスタムCSS
 st.markdown(f"""
 <style>
 body {{
@@ -39,29 +28,41 @@ body {{
 .stButton > button {{
     background: {accent};
     color: white;
-    border: none;
-    padding: 0.5rem 1.2rem;
-    border-radius: 8px;
     font-weight: bold;
+    padding: 0.5rem 1.2rem;
+    border: none;
+    border-radius: 8px;
 }}
 </style>
 """, unsafe_allow_html=True)
 
-# ----------------------
-# ✅ セッションでuser_idを管理
-# ----------------------
+# -------------------------
+# 🔑 接続設定
+# -------------------------
+supabase = create_client(st.secrets["supabase_url"], st.secrets["supabase_key"])
+client = OpenAI(api_key=st.secrets["openai_api_key"])
+
+# -------------------------
+# 🎈 初回アクセスアニメーション
+# -------------------------
 if "user_id" not in st.session_state:
     new_user = supabase.table("users").insert({
         "email": f"guest_{datetime.now().timestamp()}@example.com",
         "name": "ゲスト"
     }).execute()
     st.session_state["user_id"] = new_user.data[0]["id"]
+    st.session_state["welcomed"] = False
+
+if not st.session_state.get("welcomed", False):
+    st.markdown("### 👋 ようこそ、RegLessへ！")
+    st.balloons()
+    st.session_state["welcomed"] = True
 
 user_id = st.session_state["user_id"]
 
-# ----------------------
-# 🧭 タブUIで画面を整理
-# ----------------------
+# -------------------------
+# 🧭 タブUI
+# -------------------------
 tab1, tab2, tab3, tab4 = st.tabs([
     "📝 やりたいこと登録",
     "👤 自分の目標",
@@ -69,9 +70,9 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "📊 ガントチャート"
 ])
 
-# ----------------------
-# 📝 やりたいこと登録タブ
-# ----------------------
+# -------------------------
+# 📝 やりたいこと登録
+# -------------------------
 with tab1:
     st.markdown("## ✏️ やりたいこと登録")
     goal = st.text_input("🎯 やりたいこと", placeholder="例：毎週3回ジムに行く")
@@ -84,17 +85,19 @@ with tab1:
 
     if st.button("💡 OpenAIに提案してもらう"):
         prompt = f"やりたいこと「{goal}」に対して、所要時間・費用・次アクションを提案してください"
-        try:
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "あなたは行動計画アドバイザーです。"},
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            st.success(response.choices[0].message.content.strip())
-        except Exception as e:
-            st.error(f"OpenAIエラー: {e}")
+        with st.spinner("OpenAIが考え中..."):
+            try:
+                response = client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": "あなたは行動計画アドバイザーです。"},
+                        {"role": "user", "content": prompt}
+                    ]
+                )
+                st.success(response.choices[0].message.content.strip())
+                st.snow()
+            except Exception as e:
+                st.error(f"OpenAIエラー: {e}")
 
     if st.button("✅ 登録する"):
         supabase.table("goals").insert({
@@ -109,10 +112,11 @@ with tab1:
             "comments": comments
         }).execute()
         st.success("📌 登録が完了しました！")
+        st.balloons()
 
-# ----------------------
-# 👤 自分の目標タブ
-# ----------------------
+# -------------------------
+# 👤 自分の目標一覧
+# -------------------------
 with tab2:
     st.markdown("## 👤 あなたの目標一覧")
     my_goals = supabase.table("goals").select("*").eq("user_id", user_id).order("deadline").execute().data
@@ -132,9 +136,9 @@ with tab2:
     else:
         st.info("まだ登録された目標がありません。")
 
-# ----------------------
-# 🌍 みんなの目標タブ
-# ----------------------
+# -------------------------
+# 🌍 みんなの目標
+# -------------------------
 with tab3:
     st.markdown("## 🌍 みんなの目標検索")
     tag_filter = st.text_input("🔍 タグでフィルター", "")
@@ -152,9 +156,9 @@ with tab3:
 💬 コメント: {g['comments'] or '（コメントなし）'}
 """)
 
-# ----------------------
-# 📊 ガントチャートタブ
-# ----------------------
+# -------------------------
+# 📊 ガントチャート
+# -------------------------
 with tab4:
     st.markdown("## 📊 ガントチャート")
     if all_goals:
